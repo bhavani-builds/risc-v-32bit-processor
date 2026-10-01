@@ -1,0 +1,48 @@
+name: RISC-V Verilog Verification
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  simulation:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Icarus Verilog
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y iverilog
+
+      - name: Compile RISC-V CPU
+        run: |
+          iverilog -g2012 \
+            -o riscv_sim \
+            rtl/program_counter.v \
+            rtl/register_file.v \
+            rtl/alu.v \
+            rtl/immediate_generator.v \
+            rtl/control_unit.v \
+            rtl/instruction_memory.v \
+            rtl/data_memory.v \
+            rtl/branch_unit.v \
+            rtl/risc_v_cpu.v \
+            tb/risc_v_cpu_tb.v
+
+      - name: Run simulation
+        run: |
+          vvp riscv_sim
+
+      - name: Verify simulation completed
+        run: |
+          test -f risc_v_cpu.vcd
