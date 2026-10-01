@@ -1,32 +1,132 @@
-        $display("--------------------------------");
-        $display("RISC-V BRANCH TEST");
-        $display("--------------------------------");
+`timescale 1ns/1ps
 
-        $display("x1 = %d", dut.registers.registers[1]);
-        $display("x2 = %d", dut.registers.registers[2]);
-        $display("x3 = %d", dut.registers.registers[3]);
-        $display("x4 = %d", dut.registers.registers[4]);
+module risc_v_cpu_tb;
 
-        if (dut.registers.registers[1] == 32'd10)
-            $display("PASS: x1 = 10");
-        else
-            $display("FAIL: x1");
+    reg clk;
+    reg reset;
 
-        if (dut.registers.registers[2] == 32'd10)
-            $display("PASS: x2 = 10");
-        else
-            $display("FAIL: x2");
+    integer errors;
 
-        // BEQ must skip x3 = 99
-        if (dut.registers.registers[3] == 32'd30)
-            $display("PASS: BEQ branch taken");
-        else
-            $display("FAIL: BEQ");
+    // ==========================================
+    // CPU
+    // ==========================================
 
-        // BNE must not branch
-        if (dut.registers.registers[4] == 32'd40)
-            $display("PASS: BNE branch not taken");
-        else
-            $display("FAIL: BNE");
+    risc_v_cpu dut (
+        .clk   (clk),
+        .reset (reset)
+    );
 
-        $display("--------------------------------");
+
+    // ==========================================
+    // Clock
+    // ==========================================
+
+    initial begin
+        clk = 1'b0;
+
+        forever #5 clk = ~clk;
+    end
+
+
+    // ==========================================
+    // Verification Task
+    // ==========================================
+
+    task check_register;
+
+        input [4:0] register_number;
+        input [31:0] expected_value;
+
+        begin
+
+            if (dut.registers.registers[register_number]
+                !== expected_value) begin
+
+                $display(
+                    "FAIL: x%0d expected %0d, got %0d",
+                    register_number,
+                    expected_value,
+                    dut.registers.registers[register_number]
+                );
+
+                errors = errors + 1;
+
+            end
+            else begin
+
+                $display(
+                    "PASS: x%0d = %0d",
+                    register_number,
+                    expected_value
+                );
+
+            end
+
+        end
+
+    endtask
+
+
+    // ==========================================
+    // Test
+    // ==========================================
+
+    initial begin
+
+        errors = 0;
+
+        // Waveform
+        $dumpfile("risc_v_cpu.vcd");
+        $dumpvars(0, risc_v_cpu_tb);
+
+        // Reset
+        reset = 1'b1;
+
+        #20;
+
+        reset = 1'b0;
+
+        // Allow program to execute
+        #150;
+
+        $display("");
+        $display("================================");
+        $display("RISC-V CPU VERIFICATION");
+        $display("================================");
+
+        // ======================================
+        // Register Checks
+        // ======================================
+
+        check_register(5'd1, 32'd10);
+        check_register(5'd2, 32'd20);
+        check_register(5'd3, 32'd30);
+        check_register(5'd4, 32'd10);
+
+        // ======================================
+        // Final Result
+        // ======================================
+
+        if (errors == 0) begin
+
+            $display("");
+            $display("================================");
+            $display("ALL TESTS PASSED");
+            $display("================================");
+
+        end
+        else begin
+
+            $display("");
+            $display("================================");
+            $display("TEST FAILED");
+            $display("ERRORS = %0d", errors);
+            $display("================================");
+
+        end
+
+        $finish;
+
+    end
+
+endmodule
